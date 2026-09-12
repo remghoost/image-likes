@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Image Likes</title>
+  <meta name="description" content="Share your AI creations with likes and comments">
+  <meta name="theme-color" content="#0095f6">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ImageLikes">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Auth view -->
+  <div id="auth-view" class="auth-view hidden">
+    <div class="auth-card">
+      <h1 class="logo">Image<span>Likes</span></h1>
+      <p class="tagline">Share your AI creations</p>
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active" type="button">Log in</button>
+        <button id="tab-signup" class="auth-tab" type="button">Sign up</button>
+      </div>
+      <input id="username-input" type="text" placeholder="Username" maxlength="30" autocomplete="username" spellcheck="false">
+      <input id="password-input" type="password" placeholder="Password" autocomplete="current-password">
+      <button id="auth-submit-btn" class="btn-primary">Log in</button>
+      <p id="auth-error" class="error"></p>
+    </div>
+  </div>
+
+  <!-- App view -->
+  <div id="app-view" class="hidden">
+    <header class="header">
+      <h1 class="logo">Image<span>Likes</span></h1>
+      <nav class="tabs">
+        <button class="tab active" data-tab="feed">Feed</button>
+        <button class="tab" data-tab="liked">Liked</button>
+      </nav>
+      <div class="user-area">
+        <button id="user-menu-btn" class="user-menu-btn" type="button" aria-haspopup="true" aria-expanded="false">
+          <span id="user-menu-avatar" class="user-menu-avatar"></span>
+          <span id="current-username" class="current-username"></span>
+          <span class="user-menu-caret">&#9662;</span>
+        </button>
+        <div id="user-menu" class="user-menu hidden">
+          <button id="profile-menu-btn" class="user-menu-item" type="button">Profile</button>
+          <button id="change-pw-btn" class="user-menu-item" type="button">Change password</button>
+          <button id="logout-btn" class="user-menu-item" type="button">Log out</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="card upload-card" id="upload-card">
+        <label class="upload-row" for="image-input">
+          <span class="upload-icon">&#128247;</span>
+          <span class="upload-text">Share images <span class="upload-hint">up to 10, or drag & drop</span></span>
+        </label>
+        <input type="file" id="image-input" accept="image/*" multiple hidden>
+        <div class="upload-preview hidden" id="upload-preview">
+          <div class="preview-grid" id="preview-grid"></div>
+        </div>
+        <div class="upload-desc-row">
+          <textarea id="description-input" placeholder="Add a description…" maxlength="500" rows="2"></textarea>
+        </div>
+        <div class="upload-actions hidden" id="upload-actions">
+          <button type="button" id="post-btn" class="btn-primary">Post</button>
+        </div>
+        <p id="upload-status" class="upload-status"></p>
+      </div>
+
+      <div id="feed"></div>
+
+      <!-- Profile view (hidden unless the Profile tab is active) -->
+      <div id="profile-view" class="hidden"></div>
+    </main>
+  </div>
+
+  <!-- Change password modal -->
+  <div id="pw-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h2 class="modal-title">Change password</h2>
+      <input id="pw-current" type="password" placeholder="Current password" autocomplete="current-password">
+      <input id="pw-new" type="password" placeholder="New password (min 6 chars)" autocomplete="new-password">
+      <input id="pw-confirm" type="password" placeholder="Confirm new password" autocomplete="new-password">
+      <p id="pw-error" class="error"></p>
+      <div class="modal-actions">
+        <button id="pw-cancel" class="btn-ghost">Cancel</button>
+        <button id="pw-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit profile modal (bio + profile picture) -->
+  <div id="edit-profile-modal" class="modal-backdrop hidden">
+    <div class="modal-card edit-profile-card">
+      <h2 class="modal-title">Edit profile</h2>
+      <div class="edit-profile-pic-row">
+        <div class="edit-profile-pic-wrap">
+          <div id="edit-profile-pic" class="avatar avatar-lg"></div>
+          <button id="edit-pic-btn" class="btn-ghost edit-pic-btn" type="button">Change photo</button>
+        </div>
+        <div class="edit-profile-pic-actions">
+          <button id="remove-pic-btn" class="btn-ghost" type="button">Remove photo</button>
+        </div>
+      </div>
+      <div class="edit-profile-bio-row">
+        <label class="field-label" for="bio-input">Bio</label>
+        <textarea id="bio-input" placeholder="Tell a little about yourself…" maxlength="150" rows="3"></textarea>
+        <span id="bio-count" class="bio-count">0/150</span>
+      </div>
+      <p id="edit-profile-error" class="error"></p>
+      <div class="modal-actions">
+        <button id="edit-profile-cancel" class="btn-ghost" type="button">Cancel</button>
+        <button id="edit-profile-save" class="btn-primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Crop / resize modal for profile picture -->
+  <div id="crop-modal" class="modal-backdrop hidden">
+    <div class="modal-card crop-card">
+      <h2 class="modal-title">Crop photo</h2>
+      <p class="crop-hint">Drag to reposition, scroll or pinch to zoom. The circle shows your new profile picture.</p>
+      <div class="crop-stage" id="crop-stage">
+        <div class="crop-viewport">
+          <img id="crop-img" alt="Crop preview" draggable="false">
+          <div class="crop-mask"></div>
+        </div>
+      </div>
+      <div class="crop-controls">
+        <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1">
+      </div>
+      <p id="crop-error" class="error"></p>
+      <div class="modal-actions">
+        <button id="crop-cancel" class="btn-ghost" type="button">Cancel</button>
+        <button id="crop-save" class="btn-primary" type="button">Use photo</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Post detail modal (opened by clicking a grid tile) -->
+  <div id="post-modal" class="modal-backdrop hidden">
+    <div class="modal-card post-card">
+      <button id="post-modal-close" class="post-modal-close" type="button" title="Close">&#10005;</button>
+      <div id="post-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Edit description modal -->
+  <div id="edit-desc-modal" class="modal-backdrop hidden">
+    <div class="modal-card edit-desc-card">
+      <h2 class="modal-title">Edit description</h2>
+      <div class="edit-desc-row">
+        <textarea id="edit-desc-input" placeholder="Add a description…" maxlength="500" rows="4"></textarea>
+        <span id="edit-desc-count" class="bio-count">0/500</span>
+      </div>
+      <p id="edit-desc-error" class="error"></p>
+      <div class="modal-actions">
+        <button id="edit-desc-cancel" class="btn-ghost" type="button">Cancel</button>
+        <button id="edit-desc-save" class="btn-primary" type="button">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

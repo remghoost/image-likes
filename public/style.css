@@ -1,0 +1,1085 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #fafafa;
+  color: #262626;
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+button { cursor: pointer; font-family: inherit; }
+input { font-family: inherit; }
+
+/* ---------- Logo ---------- */
+.logo {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+.logo span { color: #0095f6; }
+
+/* ---------- Auth view ---------- */
+.auth-view {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.auth-card {
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 10px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tagline {
+  color: #8e8e8e;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.auth-tabs {
+  display: flex;
+  border-bottom: 1px solid #efefef;
+  margin-bottom: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #8e8e8e;
+  transition: color 0.15s, border-color 0.15s;
+}
+.auth-tab:hover { color: #262626; }
+.auth-tab.active { color: #262626; border-bottom-color: #0095f6; }
+
+.auth-card input {
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-size: 15px;
+  outline: none;
+  text-align: center;
+}
+.auth-card input:focus { border-color: #0095f6; }
+
+.btn-primary {
+  background: #0095f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #007ad9; }
+.btn-primary:disabled { background: #a8d8f8; cursor: default; }
+
+.error {
+  color: #ed4956;
+  font-size: 13px;
+  min-height: 16px;
+}
+
+/* ---------- Header ---------- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  border-bottom: 1px solid #dbdbdb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  gap: 16px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab {
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #8e8e8e;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.tab:hover { color: #262626; }
+.tab.active { color: #262626; background: #f2f2f2; }
+
+.user-area {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Account menu trigger: avatar + name + caret, opens the dropdown */
+.user-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.user-menu-btn:hover { background: #f2f2f2; }
+.user-menu-btn.open { background: #f2f2f2; }
+
+.user-menu-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0095f6, #7a5cff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.user-menu-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.current-username {
+  font-weight: 600;
+  font-size: 14px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-caret {
+  font-size: 10px;
+  color: #8e8e8e;
+  transition: transform 0.15s;
+}
+.user-menu-btn.open .user-menu-caret { transform: rotate(180deg); }
+
+/* The dropdown menu */
+.user-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+  animation: menuIn 0.12s ease;
+}
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.user-menu-item {
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: #262626;
+  padding: 9px 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.user-menu-item:hover { background: #f2f2f2; }
+
+.btn-ghost {
+  background: none;
+  border: none;
+  color: #0095f6;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.btn-ghost:hover { background: #eef7fd; }
+
+/* ---------- Main / feed ---------- */
+.main {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px 12px 60px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+/* ---------- Upload card ---------- */
+.upload-card { padding: 4px; }
+
+.upload-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.upload-row:hover { background: #f7f7f7; }
+
+.upload-icon { font-size: 22px; }
+.upload-text { font-weight: 600; font-size: 15px; }
+.upload-hint { color: #8e8e8e; font-weight: 400; font-size: 13px; }
+
+/* Drag & drop highlight */
+.upload-card { transition: border-color 0.15s, box-shadow 0.15s; }
+.upload-card.drag-over {
+  border-color: #0095f6;
+  box-shadow: 0 0 0 3px rgba(0, 149, 246, 0.25);
+}
+.upload-card.drag-over .upload-row { background: #eef7fd; }
+.upload-card.drag-over .upload-text { color: #0095f6; }
+
+/* Staged preview (before posting) — a grid of thumbnails, one per selected image */
+.upload-preview { padding: 0 16px 4px; }
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.preview-thumb {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #dbdbdb;
+  background: #000;
+  line-height: 0;
+  aspect-ratio: 1 / 1;
+}
+.preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  background: #000;
+}
+.preview-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.preview-remove:hover { background: #ed4956; }
+
+.upload-actions {
+  padding: 10px 16px 0;
+}
+.upload-actions .btn-primary { width: 100%; }
+
+.upload-desc-row {
+  padding: 0 16px;
+}
+.upload-desc-row textarea {
+  width: 100%;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+.upload-desc-row textarea:focus { border-color: #0095f6; }
+.upload-desc-row textarea::placeholder { color: #8e8e8e; }
+
+.upload-status {
+  font-size: 13px;
+  color: #8e8e8e;
+  padding: 0 16px 12px;
+  min-height: 0;
+}
+.upload-status:empty { display: none; }
+.upload-status.err { color: #ed4956; }
+
+/* ---------- Image card ---------- */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0095f6, #7a5cff);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.author { font-weight: 600; font-size: 14px; }
+
+/* Clickable author (name + avatar) → navigates to their profile */
+.author-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  transition: background 0.15s;
+}
+.author-link:hover { background: #f2f2f2; }
+.author-link:hover .author { color: #0095f6; }
+
+.time {
+  color: #8e8e8e;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  color: #8e8e8e;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+.delete-btn:hover { color: #ed4956; background: #fdeef0; }
+
+.edit-desc-btn {
+  background: none;
+  border: none;
+  color: #8e8e8e;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+.edit-desc-btn:hover { color: #0095f6; background: #eef7fd; }
+
+.image-wrap {
+  position: relative;
+  background: #000;
+  line-height: 0;
+}
+.image-wrap img {
+  width: 100%;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  cursor: pointer;
+}
+
+/* ---------- Carousel (multi-image posts) ---------- */
+.carousel {
+  position: relative;
+  background: #000;
+}
+.carousel-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-slide {
+  flex: 0 0 100%;
+  width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+.carousel-slide .image-wrap { width: 100%; }
+
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: #262626;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s, opacity 0.15s;
+  z-index: 2;
+}
+.carousel-arrow:hover { background: #fff; }
+.carousel-arrow.prev { left: 8px; }
+.carousel-arrow.next { right: 8px; }
+.carousel-arrow.disabled { opacity: 0; pointer-events: none; }
+
+.carousel-counter {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  z-index: 2;
+}
+
+.carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+}
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.carousel-dot.active {
+  background: #fff;
+  transform: scale(1.2);
+}
+
+/* Heart burst on double tap */
+.heart-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 90px;
+  color: #fff;
+  pointer-events: none;
+  animation: heartPop 0.8s ease forwards;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  line-height: 1;
+}
+
+@keyframes heartPop {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  15%  { transform: translate(-50%, -50%) scale(1.25); opacity: 1; }
+  30%  { transform: translate(-50%, -50%) scale(1); }
+  70%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+}
+
+/* ---------- Image description ---------- */
+.image-description {
+  padding: 10px 14px 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #262626;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* ---------- Actions row ---------- */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px 4px;
+}
+
+.like-btn, .comment-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  color: #262626;
+  transition: transform 0.1s;
+}
+.like-btn:active, .comment-btn:active { transform: scale(0.85); }
+
+.like-btn svg { fill: none; stroke: #262626; stroke-width: 2; }
+.like-btn.liked svg { fill: #ed4956; stroke: #ed4956; }
+.like-btn.liked { animation: likePulse 0.3s ease; }
+
+@keyframes likePulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.comment-btn svg { fill: none; stroke: #262626; stroke-width: 2; }
+
+.like-count {
+  font-size: 14px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* ---------- Comments ---------- */
+.comments {
+  padding: 6px 14px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.comment {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 14px;
+  padding: 2px 0;
+}
+
+/* The text is a flex item that fills the space between the author and the
+   meta. When it's long it wraps within its own box, so the continuation lines
+   are indented (aligned with the text's start) and never line up with the
+   next comment's username. */
+.comment-author { font-weight: 600; flex-shrink: 0; }
+.comment-text { color: #262626; word-break: break-word; flex: 1; min-width: 0; }
+
+/* Right side: time + delete + reactions, pinned to the first line at the right. */
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.comment-time { color: #8e8e8e; font-size: 11px; }
+
+.comment .delete-comment {
+  background: none;
+  border: none;
+  color: #8e8e8e;
+  font-size: 11px;
+  padding: 0 2px;
+}
+.comment .delete-comment:hover { color: #ed4956; }
+
+/* ---------- Comment reactions ---------- */
+.comment-reaction-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+/* The grey toggle button: shows a smiley when empty, expands to a summary when reactions exist */
+.reaction-toggle {
+  background: #f2f2f2;
+  border: none;
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: background 0.15s, transform 0.1s;
+}
+.reaction-toggle:hover { background: #e4e6ea; }
+.reaction-toggle:active { transform: scale(0.95); }
+.reaction-toggle.has-reactions { background: #eef7fd; }
+.reaction-toggle.has-reactions:hover { background: #dceefb; }
+.reaction-smiley {
+  font-size: 14px;
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+.reaction-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+}
+.reaction-summary sup {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8e8e8e;
+  margin-left: 1px;
+}
+/* The expandable picker of emoji buttons (hidden until the toggle is pressed) */
+.reaction-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 14px;
+  padding: 2px 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  animation: pickerIn 0.15s ease;
+}
+@keyframes pickerIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.comment-reaction {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 2px 5px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.comment-reaction:hover {
+  background: #f2f2f2;
+  border-color: #dbdbdb;
+}
+.comment-reaction:active { transform: scale(0.85); }
+.comment-reaction.active {
+  background: #eef7fd;
+  border-color: #0095f6;
+}
+.reaction-count {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8e8e8e;
+}
+.comment-reaction.active .reaction-count { color: #0095f6; }
+
+.no-comments {
+  color: #8e8e8e;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ---------- Comment form ---------- */
+.comment-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 12px;
+  border-top: 1px solid #efefef;
+  margin-top: 6px;
+}
+
+.comment-form input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background: transparent;
+}
+.comment-form input::placeholder { color: #8e8e8e; }
+
+.post-btn {
+  background: none;
+  border: none;
+  color: #0095f6;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.post-btn:hover { background: #eef7fd; }
+.post-btn:disabled { color: #a8d8f8; cursor: default; }
+
+/* ---------- Empty state ---------- */
+.empty {
+  text-align: center;
+  color: #8e8e8e;
+  font-size: 14px;
+  padding: 40px 20px;
+}
+
+/* ---------- Change password modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.modal-card input {
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 11px 14px;
+  font-size: 15px;
+  outline: none;
+}
+.modal-card input:focus { border-color: #0095f6; }
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+.modal-actions .btn-primary { padding: 10px 18px; }
+
+/* ---------- Avatar variants (image + sizes) ---------- */
+.avatar-img {
+  overflow: hidden;
+  background: #fff;
+}
+.avatar-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.avatar-lg { width: 80px; height: 80px; font-size: 30px; }
+.avatar-xl { width: 120px; height: 120px; font-size: 44px; }
+
+/* ---------- Profile view ---------- */
+.profile-header { padding: 20px 16px; }
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.profile-meta { flex: 1; min-width: 0; }
+.profile-username-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.profile-username { font-size: 18px; font-weight: 600; }
+.profile-back-btn { margin-left: auto; }
+.profile-stats {
+  display: flex;
+  gap: 20px;
+  font-size: 14px;
+  color: #262626;
+}
+.profile-stat strong { font-weight: 700; }
+.profile-bio {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Profile grid (Instagram-style 3-column) */
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+.grid-tile {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: #000;
+  line-height: 0;
+}
+.grid-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.15s;
+}
+.grid-tile:hover img { opacity: 0.85; }
+.grid-multi {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  line-height: 1.3;
+}
+.profile-empty { padding: 30px 20px; }
+
+/* ---------- Edit profile modal ---------- */
+.edit-profile-card { max-width: 400px; }
+.edit-profile-pic-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.edit-profile-pic-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.edit-pic-btn {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.edit-profile-pic-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.edit-profile-bio-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #262626;
+}
+.edit-profile-bio-row textarea {
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+.edit-profile-bio-row textarea:focus { border-color: #0095f6; }
+.bio-count {
+  font-size: 12px;
+  color: #8e8e8e;
+  text-align: right;
+}
+
+/* ---------- Crop / resize modal ---------- */
+.crop-card { max-width: 420px; }
+.crop-hint {
+  font-size: 13px;
+  color: #8e8e8e;
+  text-align: center;
+}
+.crop-stage {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  cursor: grab;
+  touch-action: none;
+}
+.crop-stage:active { cursor: grabbing; }
+.crop-viewport {
+  position: relative;
+  width: min(300px, 80vw);
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #000;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #dbdbdb;
+}
+.crop-viewport img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+.crop-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+}
+.crop-controls input[type="range"] {
+  flex: 1;
+  border: none;
+  padding: 0;
+  accent-color: #0095f6;
+}
+
+/* ---------- Edit description modal ---------- */
+.edit-desc-card { max-width: 400px; }
+.edit-desc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.edit-desc-row textarea {
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+.edit-desc-row textarea:focus { border-color: #0095f6; }
+
+/* ---------- Post detail modal ---------- */
+.post-card {
+  max-width: 480px;
+  max-height: calc(100vh - 40px);
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+/* The card becomes a flex column so the image and the comment form stay
+   pinned while the description + comments scroll. min-height: 0 lets these
+   shrink below their content size once the modal hits its max-height. */
+#post-modal-body {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.post-card .image-card {
+  border: none;
+  margin: 0;
+  border-radius: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Keep the header, image, and comment form at their natural size (pinned). */
+.post-card .card-header,
+.post-card .image-wrap,
+.post-card .carousel,
+.post-card .comment-form {
+  flex-shrink: 0;
+}
+/* Cap the image height so it's always fully visible, even for tall images. */
+.post-card .image-wrap img {
+  max-height: 50vh;
+  object-fit: contain;
+}
+/* Description + actions + comments scroll within the available space.
+   min-height: 0 + overflow lets it shrink and scroll when the modal is capped. */
+.post-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.post-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 16px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.post-modal-close:hover { background: rgba(0, 0, 0, 0.7); }
+
+/* Lock body scroll while a modal is open */
+body.modal-open { overflow: hidden; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 520px) {
+  .header { padding: 10px 12px; }
+  .logo { font-size: 20px; }
+  .main { padding: 12px 8px 40px; }
+  .profile-top { gap: 16px; }
+  .avatar-xl { width: 90px; height: 90px; font-size: 34px; }
+}
