@@ -31,6 +31,22 @@ function parseArgs(argv) {
 }
 const cliArgs = parseArgs(process.argv.slice(2));
 const PORT = cliArgs.port || process.env.PORT || 3000;
+// True when the server itself terminates TLS (cert/key provided).
+const IS_HTTPS = !!(cliArgs.cert && cliArgs.key);
+
+// Decide whether a given request arrived over HTTPS. This is what determines
+// whether the session cookie gets the `Secure` flag (so it's refused over any
+// accidental plaintext HTTP fallback). Two cases:
+//   1. Direct HTTPS — we're serving TLS ourselves (cert/key provided).
+//   2. Behind a reverse proxy (e.g. nginx) that terminates TLS and forwards
+//      the original scheme via `X-Forwarded-Proto: https`.
+// Kept conditional so local http://localhost testing doesn't drop the cookie
+// (browsers silently refuse Secure cookies on non-HTTPS origins).
+function isSecureRequest(req) {
+  if (IS_HTTPS) return true;
+  const proto = req && req.headers['x-forwarded-proto'];
+  return proto === 'https';
+}
 
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -134,12 +150,16 @@ function getSessionUser(token) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id) || null;
 }
 
-function setSessionCookie(res, token) {
-  res.setHeader('Set-Cookie', `session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_MS / 1000}`);
+function setSessionCookie(req, res, token) {
+  // `Secure` is only added over HTTPS — browsers silently drop Secure cookies
+  // on non-HTTPS origins, which would lock you out during local HTTP testing.
+  const secure = isSecureRequest(req) ? ' Secure' : '';
+  res.setHeader('Set-Cookie', `session=${token}; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=${SESSION_TTL_MS / 1000}`);
 }
 
-function clearSessionCookie(res) {
-  res.setHeader('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0');
+function clearSessionCookie(req, res) {
+  const secure = isSecureRequest(req) ? ' Secure' : '';
+  res.setHeader('Set-Cookie', `session=; Path=/; HttpOnly;${secure} SameSite=Lax; Max-Age=0`);
 }
 
 function requireUser(req, res, next) {
@@ -203,7 +223,7 @@ app.post('/api/signup', signupLimiter, (req, res) => {
   }
   const info = db.prepare('INSERT INTO users (username, password_hash) VALUES (?, ?)').run(username, hashPassword(password));
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
-  setSessionCookie(res, createSession(user.id));
+  setSessionCookie(req, res, createSession(user.id));
   res.json(publicUser(user));
 });
 
@@ -215,7 +235,7 @@ app.post('/api/login', loginLimiter, (req, res) => {
   if (!user || !verifyPassword(password, user.password_hash)) {
     return res.status(401).json({ error: 'Invalid username or password' });
   }
-  setSessionCookie(res, createSession(user.id));
+  setSessionCookie(req, res, createSession(user.id));
   res.json(publicUser(user));
 });
 
@@ -235,7 +255,7 @@ app.post('/api/password', requireUser, (req, res) => {
 app.post('/api/logout', (req, res) => {
   const token = req.cookies && req.cookies.session;
   if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
-  clearSessionCookie(res);
+  clearSessionCookie(req, res);
   res.json({ ok: true });
 });
 
