@@ -181,7 +181,14 @@ const signupLimiter = rateLimit({
 });
 
 // --- Auth routes ---
+// Signup is gated behind an invite code when INVITE_CODE is set (for
+// internet-facing deployments). Leave it unset for open local development.
+const INVITE_CODE = process.env.INVITE_CODE;
+
 app.post('/api/signup', signupLimiter, (req, res) => {
+  if (INVITE_CODE && req.body.inviteCode !== INVITE_CODE) {
+    return res.status(403).json({ error: 'Invalid invite code' });
+  }
   const username = (req.body.username || '').trim();
   const password = req.body.password;
   if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
@@ -238,15 +245,19 @@ app.get('/api/me', (req, res) => {
   res.json({ user: user ? publicUser(user) : null });
 });
 
+// Public config the frontend needs before login (e.g. whether signup requires
+// an invite code). No sensitive data — safe to expose without auth.
+app.get('/api/config', (req, res) => {
+  res.json({ inviteRequired: !!INVITE_CODE });
+});
+
 // --- Profile routes ---
 // Get a user's public profile: their info plus all their posts (grouped).
-app.get('/api/users/:username', (req, res) => {
+app.get('/api/users/:username', requireUser, (req, res) => {
   const username = (req.params.username || '').trim();
   const user = username ? db.prepare('SELECT * FROM users WHERE username = ?').get(username) : null;
   if (!user) return res.status(404).json({ error: 'User not found' });
 
-  const viewer = getSessionUser(req.cookies && req.cookies.session);
-  const viewerId = viewer ? viewer.id : 0;
   const images = db.prepare(`
     SELECT i.id, i.filename, i.description, i.created_at, i.post_id, u.username AS author, u.profile_pic AS author_pic,
       (SELECT COUNT(*) FROM likes l WHERE l.image_id = i.id) AS like_count,
@@ -256,7 +267,7 @@ app.get('/api/users/:username', (req, res) => {
     JOIN users u ON u.id = i.user_id
     WHERE i.user_id = ?
     ORDER BY i.id DESC
-  `).all(viewerId, user.id);
+  `).all(req.user.id, user.id);
 
   res.json({
     user: publicUser(user),
@@ -363,9 +374,7 @@ app.post('/api/images', requireUser, upload.array('image', MAX_IMAGES_PER_POST),
   });
 });
 
-app.get('/api/images', (req, res) => {
-  const user = getSessionUser(req.cookies && req.cookies.session);
-  const userId = user ? user.id : 0;
+app.get('/api/images', requireUser, (req, res) => {
   const images = db.prepare(`
     SELECT i.id, i.filename, i.description, i.created_at, i.post_id, u.username AS author, u.profile_pic AS author_pic,
       (SELECT COUNT(*) FROM likes l WHERE l.image_id = i.id) AS like_count,
@@ -374,7 +383,7 @@ app.get('/api/images', (req, res) => {
     FROM images i
     JOIN users u ON u.id = i.user_id
     ORDER BY i.id DESC
-  `).all(userId);
+  `).all(req.user.id);
   res.json(groupIntoPosts(images));
 });
 
@@ -504,9 +513,7 @@ function getCommentReactions(commentIds, viewerId) {
   return result;
 }
 
-app.get('/api/images/:id/comments', (req, res) => {
-  const viewer = getSessionUser(req.cookies && req.cookies.session);
-  const viewerId = viewer ? viewer.id : 0;
+app.get('/api/images/:id/comments', requireUser, (req, res) => {
   const comments = db.prepare(`
     SELECT c.id, c.text, c.created_at, u.username AS author
     FROM comments c
@@ -514,7 +521,7 @@ app.get('/api/images/:id/comments', (req, res) => {
     WHERE c.image_id = ?
     ORDER BY c.id ASC
   `).all(req.params.id);
-  const reactions = getCommentReactions(comments.map((c) => c.id), viewerId);
+  const reactions = getCommentReactions(comments.map((c) => c.id), req.user.id);
   for (const c of comments) {
     c.reactions = reactions[c.id] || {};
   }

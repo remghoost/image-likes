@@ -95,6 +95,7 @@ function toggleUserMenu() {
 
 // ---------- Auth ----------
 let authMode = 'login'; // 'login' | 'signup'
+let inviteRequired = false; // set from /api/config; shows the invite-code field on signup
 
 function setAuthMode(mode) {
   authMode = mode;
@@ -102,6 +103,7 @@ function setAuthMode(mode) {
   $('#tab-signup').classList.toggle('active', mode === 'signup');
   $('#auth-submit-btn').textContent = mode === 'login' ? 'Log in' : 'Sign up';
   $('#password-input').autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+  $('#invite-input').classList.toggle('hidden', !(mode === 'signup' && inviteRequired));
   $('#auth-error').textContent = '';
 }
 
@@ -117,7 +119,11 @@ async function submitAuth() {
   try {
     $('#auth-error').textContent = '';
     const path = authMode === 'login' ? '/api/login' : '/api/signup';
-    currentUser = await api(path, { method: 'POST', body: { username, password } });
+    const body = { username, password };
+    if (authMode === 'signup' && inviteRequired) {
+      body.inviteCode = $('#invite-input').value.trim();
+    }
+    currentUser = await api(path, { method: 'POST', body });
     showApp();
   } catch (err) {
     $('#auth-error').textContent = err.message;
@@ -1228,6 +1234,13 @@ async function init() {
     currentUser = user;
   } catch {
     currentUser = null;
+  }
+  // Fetch public config (e.g. whether signup requires an invite code).
+  try {
+    const config = await api('/api/config');
+    inviteRequired = !!config.inviteRequired;
+  } catch {
+    inviteRequired = false;
   }
   if (currentUser) showApp();
   else showAuth();

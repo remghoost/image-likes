@@ -38,6 +38,26 @@ node server.js [--import <folder>] [--as <username>] [--port <port>]
 - `--as <username>` — owner of imported images. Defaults to an auto-created `importer` account.
 - `--port <port>` — overrides the port (also honors `PORT` env var; default 3000).
 
+### Internet-facing deployment (invite-gated signup)
+
+By default signup is open, which is fine for local use. To lock the app down for an
+internet-facing deployment (e.g. behind nginx with Let's Encrypt), set the `INVITE_CODE`
+environment variable before starting the server:
+
+```
+INVITE_CODE=your-secret-code node server.js
+```
+
+When `INVITE_CODE` is set, `POST /api/signup` requires a matching `inviteCode` in the
+request body (403 otherwise), and the signup form shows an "Invite code" field (the
+frontend reads `GET /api/config`, which returns `{ inviteRequired: true }`). Tell
+friends the code privately; rotate it by changing the env var and restarting.
+
+Note that the read routes (`/api/images`, `/api/liked`, `/api/users/:username`,
+`/api/images/:id/comments`) require a logged-in session **regardless** of `INVITE_CODE`
+— so nobody can browse content without a real account. Leave `INVITE_CODE` unset for
+open local development.
+
 ### Resetting a password
 
 There is no email in this app, so there's no "send a reset link" flow. Instead, the
@@ -103,6 +123,18 @@ uses `crypto.timingSafeEqual` to avoid timing attacks, and login returns the sam
 `POST /api/password` (auth required) changes the current user's password after
 verifying the current one.
 
+**Read routes require auth:** the feed (`GET /api/images`), liked tab
+(`GET /api/liked`), user profiles (`GET /api/users/:username`), and image comments
+(`GET /api/images/:id/comments`) all require a logged-in session. Nobody can browse any
+content without a real account — the app's own session cookie is the only gate, which is
+what you want behind a reverse proxy (no separate Basic-Auth layer to fight with the PWA
+standalone shell).
+
+**Invite-gated signup:** when the `INVITE_CODE` env var is set, `POST /api/signup`
+requires a matching `inviteCode` in the body (403 otherwise). `GET /api/config` returns
+`{ inviteRequired: true }` so the frontend can show an invite-code field on the signup
+form. Leave `INVITE_CODE` unset for open local development.
+
 **Migrating existing passwordless accounts:** on startup, any user whose
 `password_hash` is `NULL` (created before passwords existed) is given a random
 temporary password, which is printed to the console. Log in with it, then use
@@ -151,12 +183,13 @@ timestamp handling.
 | POST   | `/api/password`           | yes  | Change the current user's password (verifies the current one) |
 | POST   | `/api/logout`             | no   | Clear the session cookie |
 | GET    | `/api/me`                 | no   | Current user (or `{ user: null }`) |
+| GET    | `/api/config`             | no   | Public config: `{ inviteRequired }` (drives the signup invite-code field) |
 | POST   | `/api/images`             | yes  | Upload an image (multipart, field `image`, optional field `description` max 500 chars) |
-| GET    | `/api/images`             | no   | Feed, newest first; includes `description`, `like_count`, `comment_count`, `liked_by_me` |
+| GET    | `/api/images`             | yes  | Feed, newest first; includes `description`, `like_count`, `comment_count`, `liked_by_me` |
 | GET    | `/api/liked`              | yes  | Images liked by the current user, newest like first |
 | DELETE | `/api/images/:id`         | yes  | Delete own image (also deletes the file from `uploads/`) |
 | POST   | `/api/images/:id/like`    | yes  | **Toggle** like; returns `{ liked, like_count }` |
-| GET    | `/api/images/:id/comments`| no   | Comments for an image, oldest first |
+| GET    | `/api/images/:id/comments`| yes  | Comments for an image, oldest first |
 | POST   | `/api/images/:id/comments`| yes  | Add a comment (max 500 chars) |
 | DELETE | `/api/comments/:id`       | yes  | Delete own comment |
 
@@ -191,6 +224,11 @@ Single page, no framework, no build step — edit and refresh.
   can't be guessed or spoofed; logout deletes the row server-side. 30-day expiry.
 - **Brute-force protection:** `express-rate-limit` on `/api/login` and `/api/signup`
   (5 attempts / 15 min per IP).
+- **Read routes require auth:** the feed, liked tab, user profiles, and image comments
+  all require a logged-in session, so no content is browsable without an account.
+- **Invite-gated signup:** set `INVITE_CODE` to require an invite code on signup
+  (403 without a match). `GET /api/config` exposes `inviteRequired` so the frontend can
+  show the field. Leave it unset for open local development.
 - **CSRF:** `SameSite=Lax` on the session cookie blocks cross-site cookie submission.
 - **Security headers:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
   `Referrer-Policy: no-referrer`, and a strict `Content-Security-Policy`
