@@ -188,9 +188,7 @@ async function loadFeed() {
   const feed = $('#feed');
   feed.innerHTML = '<p class="empty">Loading…</p>';
   try {
-    const images = currentTab === 'liked'
-      ? await api('/api/liked')
-      : await api('/api/images');
+    const images = await api('/api/images');
     renderFeed(images);
   } catch (err) {
     feed.innerHTML = `<p class="empty">${escapeHtml(err.message)}</p>`;
@@ -200,9 +198,7 @@ async function loadFeed() {
 function renderFeed(images) {
   const feed = $('#feed');
   if (!images.length) {
-    feed.innerHTML = `<p class="empty">${currentTab === 'liked'
-      ? 'No liked images yet. Double tap an image to like it!'
-      : 'No images yet. Share the first one!'}</p>`;
+    feed.innerHTML = `<p class="empty">No images yet. Share the first one!</p>`;
     return;
   }
   feed.innerHTML = images.map((img) => imageCardHtml(img)).join('');
@@ -521,8 +517,6 @@ async function toggleLike(img, card, event) {
     likeBtn.classList.toggle('liked', result.liked);
     likeCount.textContent = `${result.like_count} like${result.like_count === 1 ? '' : 's'}`;
     if (result.liked) showHeartBurst(card);
-    // If we're in the Liked tab and just unliked, remove the card
-    if (currentTab === 'liked' && !result.liked) card.remove();
   } catch (err) {
     alert(err.message);
   }
@@ -787,6 +781,33 @@ function switchView() {
   } else {
     loadFeed();
   }
+}
+
+// ---------- Blur toggle ----------
+// When on, blurs every shared image on screen (feed, profile grid, post
+// modal). Profile pictures and upload previews stay sharp. The preference
+// is remembered per browser.
+const BLUR_KEY = 'imageLikesBlur';
+let blurEnabled = false;
+
+function applyBlur() {
+  document.body.classList.toggle('images-blurred', blurEnabled);
+  const btn = $('#blur-toggle');
+  btn.classList.toggle('active', blurEnabled);
+  btn.setAttribute('aria-pressed', String(blurEnabled));
+  btn.title = blurEnabled ? 'Unblur all images' : 'Blur all images';
+}
+
+function setupBlurToggle() {
+  try {
+    blurEnabled = localStorage.getItem(BLUR_KEY) === '1';
+  } catch { /* storage unavailable */ }
+  applyBlur();
+  $('#blur-toggle').addEventListener('click', () => {
+    blurEnabled = !blurEnabled;
+    try { localStorage.setItem(BLUR_KEY, blurEnabled ? '1' : '0'); } catch { /* ignore */ }
+    applyBlur();
+  });
 }
 
 // ---------- Profile ----------
@@ -1307,6 +1328,7 @@ async function init() {
   setupCropInteractions();
   setupDragDrop();
   setupTabs();
+  setupBlurToggle();
 
   // Close any open reaction pickers when clicking outside them.
   document.addEventListener('click', (e) => {

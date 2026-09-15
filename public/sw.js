@@ -11,7 +11,7 @@
  *   - API requests (/api/*): never cached — always hit the network (they are
  *     auth-based and dynamic).
  */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = 'image-likes-' + CACHE_VERSION;
 const UPLOADS_CACHE = 'image-likes-uploads-' + CACHE_VERSION;
 

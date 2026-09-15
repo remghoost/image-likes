@@ -134,6 +134,36 @@ input { font-family: inherit; }
 .tab:hover { color: #262626; }
 .tab.active { color: #262626; background: #f2f2f2; }
 
+/* Blur toggle (sits next to the Feed tab) */
+.blur-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  font-weight: 600;
+  color: #8e8e8e;
+  padding: 8px 14px;
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s;
+}
+.blur-toggle svg { display: block; }
+.blur-toggle:hover { color: #262626; }
+.blur-toggle.active { color: #0095f6; background: #eef7fd; }
+
+/* When the blur toggle is on, blur every shared image (feed, profile grid,
+   post modal). Profile pictures and upload previews stay sharp. The blurred
+   edges fade into the black image background, so no overflow handling needed. */
+.image-wrap img,
+.grid-tile img {
+  transition: filter 0.25s ease;
+}
+body.images-blurred .image-wrap img,
+body.images-blurred .grid-tile img {
+  filter: blur(14px);
+}
+
 .user-area {
   position: relative;
   display: flex;
@@ -865,7 +895,7 @@ input { font-family: inherit; }
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, filter 0.25s ease;
 }
 .grid-tile:hover img { opacity: 0.85; }
 .grid-multi {
