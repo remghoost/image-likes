@@ -6,13 +6,15 @@
   "scripts": {
     "start": "node server.js",
     "icons": "node scripts/generate-icons.js",
-    "reset-password": "node scripts/reset-password.js"
+    "reset-password": "node scripts/reset-password.js",
+    "post": "node scripts/post.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.0.0",
     "express": "^4.21.0",
     "express-rate-limit": "^7.0.0",
-    "multer": "^2.0.1"
+    "multer": "^2.0.1",
+    "sharp": "^0.33.0"
   },
   "overrides": {
     "qs": "^6.16.0"

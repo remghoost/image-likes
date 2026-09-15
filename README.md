@@ -80,6 +80,68 @@ session keeps working after the reset. It's safe to run while the server is up (
 allows a second writer). The user then logs in with the new password and can change it
 themselves via "Change password".
 
+### Posting from a script (for LLM-driven posting)
+
+`scripts/post.js` logs in as an account and uploads one or more images as a single
+post (multiple images become a carousel). It's built to be called by an LLM: it
+takes plain args, prints progress to **stderr**, and writes a clean JSON result to
+**stdout** so the caller can parse success/failure and the post id.
+
+```
+node scripts/post.js --user <username> --password <password> \
+                     --description "caption" \
+                     --images <path> [<path> ...] \
+                     [--server <url>]
+```
+
+- `--user` / `--password` — the account to post as. These can also come from the
+  `POST_USER` / `POST_PASSWORD` env vars (args win), so a per-account wrapper can
+  bake in the credentials and only pass the per-post values.
+- `--description` — caption (max 500 chars). Also readable from `POST_DESCRIPTION`.
+- `--images` — one or more image files; all are uploaded together as ONE post.
+- `--server` — base URL (default `http://localhost:3000`, or `POST_SERVER` env).
+
+Example (the test image in `test/`):
+
+```
+node scripts/post.js --user CWitch --password tacotaco \
+  --description "I just thought this one was pretty! hehe" \
+  --images test/ComfyUI_41738_.png
+```
+
+On success it prints, e.g.:
+
+```json
+{ "ok": true, "post_id": 26, "author": "CWitch", "description": "...", "image_count": 1, "images": ["..."] }
+```
+
+**Per-account batch wrappers.** For each account you can keep a small `.bat` wrapper
+that bakes in that account's credentials and forwards the description + image args, so
+the LLM only ever supplies the per-post values:
+
+```
+post-<account>.bat "description" image1 [image2 ...]
+```
+
+To make one, copy `scripts/account-script-template.bat` into `scripts/account_scripts/`,
+rename it to `post-<account>.bat`, and edit the `POST_USER`/`POST_PASSWORD` lines.
+(Per-account wrappers live in `scripts/account_scripts/`, which is gitignored so
+credentials don't get committed.)
+
+**The LLM posting flow.** The intended end-to-end flow is three decoupled steps,
+each independently testable:
+
+1. **Generate** — ComfyUI runs a workflow (the LLM writes the prompt) and writes
+   image file(s) to disk.
+2. **Caption** — the LLM writes the description text.
+3. **Post** — the LLM calls `post.js` (or the account's batch wrapper) with the
+   image path(s) + description, then reads the JSON result.
+
+Keeping the steps separate means the LLM's job reduces to "produce files + text,
+then call one command and parse the result" — no need to understand the app's
+internals. The server must be running; if it isn't, the script exits with a clear
+error instead of hanging.
+
 ## File layout
 
 ```
@@ -94,6 +156,9 @@ uploads/           Uploaded/imported image files (gitignored)
 scripts/
   reset-password.js  Manually reset a user's password (see "Resetting a password" above)
   generate-icons.js  Regenerates the PWA icons in public/icons/
+  post.js            Log in as an account and post image(s) (see "Posting from a script")
+  account-script-template.bat  Template for a per-account posting wrapper
+  account_scripts/   Per-account posting wrappers (gitignored — contains credentials)
 ```
 
 ## Architecture

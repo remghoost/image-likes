@@ -159,6 +159,18 @@
     </div>
   </div>
 
+  <!-- Lightbox (full-resolution image viewer, opened by clicking a thumbnail) -->
+  <div id="lightbox" class="lightbox hidden">
+    <button id="lightbox-close" class="lightbox-close" type="button" title="Close" aria-label="Close">&#10005;</button>
+    <button id="lightbox-prev" class="lightbox-nav lightbox-prev" type="button" title="Previous" aria-label="Previous image">&#8249;</button>
+    <div class="lightbox-stage">
+      <div id="lightbox-spinner" class="lightbox-spinner" aria-hidden="true"></div>
+      <img id="lightbox-img" alt="Full resolution image" draggable="false">
+    </div>
+    <button id="lightbox-next" class="lightbox-nav lightbox-next" type="button" title="Next" aria-label="Next image">&#8250;</button>
+    <span id="lightbox-counter" class="lightbox-counter"></span>
+  </div>
+
   <!-- Edit description modal -->
   <div id="edit-desc-modal" class="modal-backdrop hidden">
     <div class="modal-card edit-desc-card">

@@ -3,3 +3,5 @@ data/
 uploads/
 .env
 run.bat
+test/
+scripts/account_scripts/

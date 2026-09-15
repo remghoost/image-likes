@@ -41,6 +41,7 @@ function timeAgo(dateStr) {
   if (days < 7) return `${days}d ago`;
   return date.toLocaleDateString();
 }
+
 function avatarHtml(username, pic, size) {
   const sizeClass = size ? ` avatar-${size}` : '';
   if (pic) {
@@ -443,7 +444,7 @@ function attachCardEvents(post, root) {
     let lastTap = 0;
     let clickTimer = null;
     let suppressClick = false;
-    const openLightboxForImage = () => {
+    const openLightbox = () => {
       const full = imageEl.dataset.full;
       if (!full) return;
       const imgs = Array.from(card.querySelectorAll('.image-wrap img'))
@@ -458,7 +459,7 @@ function attachCardEvents(post, root) {
     imageEl.addEventListener('click', () => {
       if (suppressClick) { suppressClick = false; return; }
       if (clickTimer) return; // second click of a double-click — don't reschedule
-      clickTimer = setTimeout(() => { clickTimer = null; openLightboxForImage(); }, 250);
+      clickTimer = setTimeout(() => { clickTimer = null; openLightbox(); }, 250);
     });
     // Desktop: double-click likes (the two clicks above are already consumed).
     imageEl.addEventListener('dblclick', like);

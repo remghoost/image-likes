@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const crypto = require('crypto');
 const https = require('https');
+const sharp = require('sharp');
 const db = require('./db');
 
 const app = express();
@@ -97,6 +98,37 @@ const upload = multer({
     else cb(new Error('Only image files are allowed'));
   }
 });
+
+// --- Thumbnails ---
+// The feed and profile grid show a small, fast-loading version of each image.
+// The full-resolution original is only fetched when the user opens the lightbox.
+// We generate a JPEG thumbnail (max 800px on the long edge) alongside the
+// original, named "<original>.thumb.jpg". Generation is best-effort: if it
+// fails (e.g. an unusual format), the frontend falls back to the original.
+const THUMB_MAX = 800;
+const THUMB_QUALITY = 82;
+
+function thumbName(filename) {
+  return `${filename}.thumb.jpg`;
+}
+
+async function generateThumbnail(filename) {
+  const src = path.join(uploadsDir, filename);
+  const dest = path.join(uploadsDir, thumbName(filename));
+  try {
+    await sharp(src)
+      .rotate() // respect EXIF orientation so thumbnails aren't sideways
+      .resize({ width: THUMB_MAX, height: THUMB_MAX, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: THUMB_QUALITY })
+      .toFile(dest);
+    return true;
+  } catch (err) {
+    console.warn(`Thumbnail generation failed for ${filename}: ${err.message}`);
+    // Clean up a partial file, if any.
+    fs.unlink(dest, () => {});
+    return false;
+  }
+}
 
 // --- Auth helpers ---
 // Passwords are hashed with scrypt (Node built-in, no extra dependency).
@@ -357,7 +389,7 @@ function groupIntoPosts(images) {
   return posts;
 }
 
-app.post('/api/images', requireUser, upload.array('image', MAX_IMAGES_PER_POST), (req, res) => {
+app.post('/api/images', requireUser, upload.array('image', MAX_IMAGES_PER_POST), async (req, res) => {
   const files = req.files || [];
   if (!files.length) return res.status(400).json({ error: 'No image uploaded' });
   const description = (req.body.description || '').trim();
@@ -373,6 +405,10 @@ app.post('/api/images', requireUser, upload.array('image', MAX_IMAGES_PER_POST),
     insert.run(req.user.id, files[i].filename, null, description || null, postId);
   }
   db.prepare('UPDATE images SET post_id = ? WHERE id = ?').run(postId, postId);
+
+  // Generate low-res thumbnails so the feed loads fast. Best-effort: the post
+  // is created even if a thumbnail fails (the frontend falls back to the original).
+  await Promise.all(files.map((f) => generateThumbnail(f.filename)));
 
   const post = db.prepare(`
     SELECT i.id, i.description, i.created_at, u.username AS author,
@@ -435,7 +471,10 @@ app.delete('/api/images/:id', requireUser, (req, res) => {
   const postId = image.post_id || image.id;
   const postImages = db.prepare('SELECT filename FROM images WHERE post_id = ?').all(postId);
   db.prepare('DELETE FROM images WHERE post_id = ?').run(postId);
-  for (const row of postImages) fs.unlink(path.join(uploadsDir, row.filename), () => {});
+  for (const row of postImages) {
+    fs.unlink(path.join(uploadsDir, row.filename), () => {});
+    fs.unlink(path.join(uploadsDir, thumbName(row.filename)), () => {});
+  }
   res.json({ ok: true });
 });
 
@@ -480,15 +519,24 @@ function importFolder(folder, ownerUsername) {
 
   let imported = 0;
   let skipped = 0;
+  const importedNames = [];
   for (const file of files) {
     if (existing.has(file)) { skipped++; continue; }
     const destName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file).toLowerCase()}`;
     fs.copyFileSync(path.join(absFolder, file), path.join(uploadsDir, destName));
     db.prepare('INSERT INTO images (user_id, filename, original_name) VALUES (?, ?, ?)').run(owner.id, destName, file);
+    importedNames.push(destName);
     imported++;
   }
 
-  console.log(`Imported ${imported} image(s) from "${folder}" as ${owner.username}${skipped ? ` (${skipped} already imported, skipped)` : ''}`);
+  // Generate thumbnails for the newly-imported images (best-effort).
+  if (importedNames.length) {
+    Promise.all(importedNames.map((name) => generateThumbnail(name))).then(() => {
+      console.log(`Imported ${imported} image(s) from "${folder}" as ${owner.username}${skipped ? ` (${skipped} already imported, skipped)` : ''}`);
+    });
+  } else {
+    console.log(`Imported ${imported} image(s) from "${folder}" as ${owner.username}${skipped ? ` (${skipped} already imported, skipped)` : ''}`);
+  }
 }
 
 // --- Like routes (toggle: like if not liked, unlike if liked) ---
@@ -599,6 +647,22 @@ app.post('/api/comments/:id/react', requireUser, (req, res) => {
 if (cliArgs.import) {
   importFolder(cliArgs.import, cliArgs.as);
 }
+
+// Backfill: generate thumbnails for any existing images that don't have one yet
+// (e.g. images uploaded before thumbnails were introduced). Runs once at startup,
+// in the background, so it doesn't block the server from starting.
+(async function backfillThumbnails() {
+  const rows = db.prepare('SELECT filename FROM images').all();
+  const missing = rows.filter((r) => !fs.existsSync(path.join(uploadsDir, thumbName(r.filename))));
+  if (!missing.length) return;
+  console.log(`Generating thumbnails for ${missing.length} existing image(s)…`);
+  // Process in small batches to avoid a burst of CPU/IO.
+  for (let i = 0; i < missing.length; i += 10) {
+    const batch = missing.slice(i, i + 10);
+    await Promise.all(batch.map((r) => generateThumbnail(r.filename)));
+  }
+  console.log('Thumbnail backfill complete.');
+})();
 
 // One-time migration: pre-existing passwordless accounts (password_hash IS NULL)
 // would otherwise be locked out. Give each a random temporary password and print
