@@ -802,14 +802,18 @@ function viewProfile(username) {
   switchView();
 }
 
-// Show/hide the feed vs. the profile view based on the active tab.
+// Show/hide the feed, profile, and DMs views based on the active tab.
 function switchView() {
   const isProfile = currentTab === 'profile';
-  $('#upload-card').classList.toggle('hidden', isProfile);
-  $('#feed').classList.toggle('hidden', isProfile);
+  const isDms = currentTab === 'dms';
+  $('#upload-card').classList.toggle('hidden', isProfile || isDms);
+  $('#feed').classList.toggle('hidden', isProfile || isDms);
   $('#profile-view').classList.toggle('hidden', !isProfile);
+  $('#dms-view').classList.toggle('hidden', !isDms);
   if (isProfile) {
     loadProfile(viewingProfile || currentUser.username);
+  } else if (isDms) {
+    loadDms();
   } else {
     loadFeed();
   }
@@ -872,7 +876,9 @@ function renderProfile(user, posts) {
         <div class="profile-meta">
           <div class="profile-username-row">
             <span class="profile-username">${escapeHtml(user.username)}</span>
-            ${isMe ? '<button id="edit-profile-btn" class="btn-ghost" type="button">Edit profile</button>' : '<button id="profile-back-btn" class="btn-ghost" type="button">&#8592; Back</button>'}
+            ${isMe
+              ? '<button id="edit-profile-btn" class="btn-ghost" type="button">Edit profile</button>'
+              : '<button id="profile-message-btn" class="btn-ghost" type="button">Message</button><button id="profile-back-btn" class="btn-ghost" type="button">&#8592; Back</button>'}
           </div>
           <div class="profile-stats">
             <span class="profile-stat"><strong>${postCount}</strong> post${postCount === 1 ? '' : 's'}</span>
@@ -896,6 +902,10 @@ function renderProfile(user, posts) {
   // Wire up the Edit profile button (only present for your own profile).
   const editBtn = $('#edit-profile-btn');
   if (editBtn) editBtn.addEventListener('click', () => openEditProfileModal(user));
+
+  // Wire up the Message button (present when viewing someone else's profile).
+  const msgBtn = $('#profile-message-btn');
+  if (msgBtn) msgBtn.addEventListener('click', () => openConversation(user.username));
 
   // Wire up the Back button (present when viewing someone else's profile).
   // Returns to the feed, where the author's name was clicked.
@@ -1363,6 +1373,214 @@ async function saveCroppedPic() {
   }
 }
 
+// ---------- DMs (direct messages) ----------
+let dmsConversations = []; // cached conversation list
+let dmsActiveUser = null; // username of the open conversation (null = none)
+let dmsPollTimer = null; // interval handle for polling new messages
+let dmsLastMessageId = 0; // highest message id seen (to detect new ones)
+
+// Load the conversation list and refresh the unread badge.
+async function loadDms() {
+  try {
+    dmsConversations = await api('/api/dms');
+    renderDmsList();
+  } catch (err) {
+    $('#dms-list').innerHTML = `<p class="dms-list-empty">${escapeHtml(err.message)}</p>`;
+  }
+  updateDmBadge();
+  startDmsPolling();
+}
+
+function renderDmsList() {
+  const list = $('#dms-list');
+  if (!dmsConversations.length) {
+    list.innerHTML = '<p class="dms-list-empty">No messages yet. Tap a username in the feed to start a conversation.</p>';
+    return;
+  }
+  list.innerHTML = dmsConversations.map((c) => {
+    const active = c.username === dmsActiveUser ? ' active' : '';
+    const preview = c.last_text ? escapeHtml(c.last_text) : 'No messages yet';
+    const unread = c.unread > 0 ? `<span class="dms-convo-unread">${c.unread}</span>` : '';
+    return `
+      <div class="dms-convo${active}" data-username="${escapeHtml(c.username)}">
+        ${avatarHtml(c.username, c.profile_pic)}
+        <div class="dms-convo-body">
+          <div class="dms-convo-top">
+            <span class="dms-convo-name">${escapeHtml(c.username)}</span>
+            <span class="dms-convo-time">${c.last_at ? timeAgo(c.last_at) : ''}</span>
+          </div>
+          <div class="dms-convo-preview${c.unread > 0 ? ' unread' : ''}">${preview}</div>
+        </div>
+        ${unread}
+      </div>`;
+  }).join('');
+  list.querySelectorAll('.dms-convo').forEach((el) => {
+    el.addEventListener('click', () => openConversation(el.dataset.username));
+  });
+}
+
+// Open a conversation with a user (from the list, or directly from a profile).
+async function openConversation(username) {
+  dmsActiveUser = username;
+  // Make sure the DMs tab is active and the view is showing.
+  document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+  const dmsTab = document.querySelector('.tab[data-tab="dms"]');
+  if (dmsTab) dmsTab.classList.add('active');
+  currentTab = 'dms';
+  switchView();
+  await loadConversation(username);
+}
+
+async function loadConversation(username) {
+  const empty = $('#dms-chat-empty');
+  const chat = $('#dms-chat');
+  const messagesEl = $('#dms-messages');
+  messagesEl.innerHTML = '<p class="dms-list-empty">Loading…</p>';
+  chat.classList.remove('hidden');
+  empty.classList.add('hidden');
+  $('#dms-view').classList.add('chat-open');
+  try {
+    const messages = await api(`/api/dms/${encodeURIComponent(username)}/messages`);
+    renderMessages(messages);
+    dmsLastMessageId = messages.length ? messages[messages.length - 1].id : 0;
+    // Mark as read and clear the unread badge for this conversation.
+    await api(`/api/dms/${encodeURIComponent(username)}/read`, { method: 'POST' });
+    const convo = dmsConversations.find((c) => c.username === username);
+    if (convo) convo.unread = 0;
+    renderDmsList();
+    updateDmBadge();
+    // Render the peer header.
+    const peer = $('#dms-chat-peer');
+    const convoData = dmsConversations.find((c) => c.username === username);
+    peer.innerHTML = `${avatarHtml(username, convoData ? convoData.profile_pic : null)}<span class="dms-chat-peer-name">${escapeHtml(username)}</span>`;
+    peer.onclick = () => viewProfile(username);
+    scrollDmsToBottom();
+    $('#dms-input').focus();
+  } catch (err) {
+    messagesEl.innerHTML = `<p class="dms-list-empty">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderMessages(messages) {
+  const el = $('#dms-messages');
+  if (!messages.length) {
+    el.innerHTML = '<p class="dms-list-empty">No messages yet. Say hi!</p>';
+    return;
+  }
+  el.innerHTML = messages.map((m) => {
+    const cls = m.mine ? 'mine' : 'theirs';
+    return `<div class="dms-msg ${cls}">${escapeHtml(m.text)}<span class="dms-msg-time">${timeAgo(m.created_at)}</span></div>`;
+  }).join('');
+}
+
+function scrollDmsToBottom() {
+  const el = $('#dms-messages');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendDm() {
+  const input = $('#dms-input');
+  const text = input.value.trim();
+  if (!text || !dmsActiveUser) return;
+  const btn = $('#dms-send-btn');
+  btn.disabled = true;
+  try {
+    const message = await api(`/api/dms/${encodeURIComponent(dmsActiveUser)}/messages`, { method: 'POST', body: { text } });
+    input.value = '';
+    const el = $('#dms-messages');
+    const placeholder = el.querySelector('.dms-list-empty');
+    if (placeholder) placeholder.remove();
+    el.insertAdjacentHTML('beforeend', `<div class="dms-msg mine">${escapeHtml(message.text)}<span class="dms-msg-time">${timeAgo(message.created_at)}</span></div>`);
+    dmsLastMessageId = Math.max(dmsLastMessageId, message.id);
+    scrollDmsToBottom();
+    // Update the conversation list preview (move to top).
+    await refreshDmsList();
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// Re-fetch the conversation list (lightweight) to reorder by recency.
+async function refreshDmsList() {
+  try {
+    dmsConversations = await api('/api/dms');
+    renderDmsList();
+  } catch { /* ignore */ }
+}
+
+// Update the red unread badge on the DMs tab.
+async function updateDmBadge() {
+  let unread = 0;
+  try {
+    const data = await api('/api/dms/unread');
+    unread = data.unread;
+  } catch { /* ignore */ }
+  const badge = $('#dm-badge');
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : String(unread);
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// Poll for new messages while the DMs view is open. Checks the unread count and,
+// if a conversation is open, fetches any new messages for it.
+function startDmsPolling() {
+  stopDmsPolling();
+  dmsPollTimer = setInterval(async () => {
+    if (currentTab !== 'dms') return;
+    await updateDmBadge();
+    if (dmsActiveUser) {
+      try {
+        const messages = await api(`/api/dms/${encodeURIComponent(dmsActiveUser)}/messages`);
+        const newMsgs = messages.filter((m) => m.id > dmsLastMessageId);
+        if (newMsgs.length) {
+          dmsLastMessageId = messages[messages.length - 1].id;
+          const el = $('#dms-messages');
+          const placeholder = el.querySelector('.dms-list-empty');
+          if (placeholder) placeholder.remove();
+          newMsgs.forEach((m) => {
+            const cls = m.mine ? 'mine' : 'theirs';
+            el.insertAdjacentHTML('beforeend', `<div class="dms-msg ${cls}">${escapeHtml(m.text)}<span class="dms-msg-time">${timeAgo(m.created_at)}</span></div>`);
+          });
+          scrollDmsToBottom();
+          await api(`/api/dms/${encodeURIComponent(dmsActiveUser)}/read`, { method: 'POST' });
+          const convo = dmsConversations.find((c) => c.username === dmsActiveUser);
+          if (convo) convo.unread = 0;
+          renderDmsList();
+          updateDmBadge();
+        }
+      } catch { /* ignore */ }
+    }
+  }, 5000);
+}
+
+function stopDmsPolling() {
+  if (dmsPollTimer) {
+    clearInterval(dmsPollTimer);
+    dmsPollTimer = null;
+  }
+}
+
+// Back to the conversation list (mobile).
+function closeDmsChat() {
+  dmsActiveUser = null;
+  $('#dms-view').classList.remove('chat-open');
+  $('#dms-chat').classList.add('hidden');
+  $('#dms-chat-empty').classList.remove('hidden');
+  renderDmsList();
+}
+
+function setupDms() {
+  $('#dms-send-btn').addEventListener('click', sendDm);
+  $('#dms-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendDm(); });
+  $('#dms-back-btn').addEventListener('click', closeDmsChat);
+}
+
 // ---------- Init ----------
 async function init() {
   try {
@@ -1445,6 +1663,7 @@ async function init() {
   setupTabs();
   setupBlurToggle();
   setupLightbox();
+  setupDms();
 
   // Close any open reaction pickers when clicking outside them.
   document.addEventListener('click', (e) => {

@@ -104,15 +104,15 @@ node scripts/post.js --user <username> --password <password> \
 Example (the test image in `test/`):
 
 ```
-node scripts/post.js --user CWitch --password tacotaco \
-  --description "I just thought this one was pretty! hehe" \
-  --images test/ComfyUI_41738_.png
+node scripts/post.js --user accountName --password accountPassword \
+  --description "text description" \
+  --images /path/to/image.png
 ```
 
 On success it prints, e.g.:
 
 ```json
-{ "ok": true, "post_id": 26, "author": "CWitch", "description": "...", "image_count": 1, "images": ["..."] }
+{ "ok": true, "post_id": 26, "author": "accountName", "description": "...", "image_count": 1, "images": ["..."] }
 ```
 
 **Per-account batch wrappers.** For each account you can keep a small `.bat` wrapper

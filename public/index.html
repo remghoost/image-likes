@@ -39,6 +39,10 @@
       <h1 class="logo">Image<span>Likes</span></h1>
       <nav class="tabs">
         <button class="tab active" data-tab="feed">Feed</button>
+        <button class="tab" data-tab="dms">
+          <span class="tab-label">DMs</span>
+          <span id="dm-badge" class="dm-badge hidden">0</span>
+        </button>
         <button id="blur-toggle" class="blur-toggle" type="button" title="Blur all images" aria-pressed="false">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="9" opacity="0.35"/>
@@ -86,6 +90,36 @@
       <!-- Profile view (hidden unless the Profile tab is active) -->
       <div id="profile-view" class="hidden"></div>
     </main>
+
+    <!-- DMs view (hidden unless the DMs tab is active). Sits outside .main so it
+         can be wider than the feed's 480px column. -->
+    <div id="dms-view" class="dms-view hidden">
+      <div class="dms-layout">
+        <div class="dms-list-panel">
+          <div class="dms-list-header">
+            <h2 class="dms-title">Messages</h2>
+          </div>
+          <div id="dms-list" class="dms-list"></div>
+        </div>
+        <div class="dms-chat-panel" id="dms-chat-panel">
+          <div class="dms-chat-empty" id="dms-chat-empty">
+            <div class="dms-chat-empty-icon">&#128172;</div>
+            <p>Select a conversation to start messaging</p>
+          </div>
+          <div class="dms-chat hidden" id="dms-chat">
+            <div class="dms-chat-header">
+              <button id="dms-back-btn" class="dms-back-btn" type="button" title="Back" aria-label="Back">&#8592;</button>
+              <div class="dms-chat-peer" id="dms-chat-peer"></div>
+            </div>
+            <div class="dms-messages" id="dms-messages"></div>
+            <div class="dms-composer">
+              <input type="text" id="dms-input" placeholder="Message…" maxlength="1000" autocomplete="off">
+              <button id="dms-send-btn" class="dms-send-btn" type="button">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Change password modal -->

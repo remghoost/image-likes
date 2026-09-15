@@ -644,6 +644,93 @@ app.post('/api/comments/:id/react', requireUser, (req, res) => {
   res.json({ reacted, emoji, count });
 });
 
+// --- Direct message routes ---
+// A "conversation" is the pair of users who have exchanged messages. Messages
+// are stored as individual rows (sender -> recipient); the conversation list is
+// derived by grouping on the other participant.
+
+// List all of the current user's conversations, most recent first. Each entry
+// includes the other user, the last message, and the unread count.
+app.get('/api/dms', requireUser, (req, res) => {
+  const me = req.user.id;
+  const rows = db.prepare(`
+    SELECT
+      u.id AS other_id,
+      u.username,
+      u.profile_pic,
+      (SELECT m2.text FROM messages m2
+        WHERE (m2.sender_id = ? AND m2.recipient_id = u.id) OR (m2.sender_id = u.id AND m2.recipient_id = ?)
+        ORDER BY m2.id DESC LIMIT 1) AS last_text,
+      (SELECT m3.created_at FROM messages m3
+        WHERE (m3.sender_id = ? AND m3.recipient_id = u.id) OR (m3.sender_id = u.id AND m3.recipient_id = ?)
+        ORDER BY m3.id DESC LIMIT 1) AS last_at,
+      (SELECT COUNT(*) FROM messages m4
+        WHERE m4.sender_id = u.id AND m4.recipient_id = ? AND m4.read_at IS NULL) AS unread
+    FROM users u
+    WHERE u.id IN (
+      SELECT CASE WHEN m.sender_id = ? THEN m.recipient_id ELSE m.sender_id END
+      FROM messages m
+      WHERE m.sender_id = ? OR m.recipient_id = ?
+    )
+    ORDER BY last_at DESC
+  `).all(me, me, me, me, me, me, me, me);
+  res.json(rows);
+});
+
+// Total unread count across all conversations (for the header badge).
+app.get('/api/dms/unread', requireUser, (req, res) => {
+  const n = db.prepare('SELECT COUNT(*) AS n FROM messages WHERE recipient_id = ? AND read_at IS NULL')
+    .get(req.user.id).n;
+  res.json({ unread: n });
+});
+
+// Fetch the message history with a specific user (oldest first).
+app.get('/api/dms/:username/messages', requireUser, (req, res) => {
+  const username = (req.params.username || '').trim();
+  const other = username ? db.prepare('SELECT * FROM users WHERE username = ?').get(username) : null;
+  if (!other) return res.status(404).json({ error: 'User not found' });
+  const me = req.user.id;
+  const messages = db.prepare(`
+    SELECT m.id, m.text, m.created_at, m.read_at,
+      (CASE WHEN m.sender_id = ? THEN 1 ELSE 0 END) AS mine
+    FROM messages m
+    WHERE (m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?)
+    ORDER BY m.id ASC
+  `).all(me, me, other.id, other.id, me);
+  res.json(messages);
+});
+
+// Send a message to a specific user.
+app.post('/api/dms/:username/messages', requireUser, (req, res) => {
+  const username = (req.params.username || '').trim();
+  const other = username ? db.prepare('SELECT * FROM users WHERE username = ?').get(username) : null;
+  if (!other) return res.status(404).json({ error: 'User not found' });
+  const text = (req.body.text || '').trim();
+  if (!text) return res.status(400).json({ error: 'Message cannot be empty' });
+  if (text.length > 1000) return res.status(400).json({ error: 'Message too long (max 1000 characters)' });
+  const me = req.user.id;
+  const info = db.prepare('INSERT INTO messages (sender_id, recipient_id, text) VALUES (?, ?, ?)')
+    .run(me, other.id, text);
+  const message = db.prepare(`
+    SELECT m.id, m.text, m.created_at, m.read_at,
+      (CASE WHEN m.sender_id = ? THEN 1 ELSE 0 END) AS mine
+    FROM messages m WHERE m.id = ?
+  `).get(me, info.lastInsertRowid);
+  res.json(message);
+});
+
+// Mark all messages from a user as read (called when the conversation is opened).
+app.post('/api/dms/:username/read', requireUser, (req, res) => {
+  const username = (req.params.username || '').trim();
+  const other = username ? db.prepare('SELECT * FROM users WHERE username = ?').get(username) : null;
+  if (!other) return res.status(404).json({ error: 'User not found' });
+  const info = db.prepare(`
+    UPDATE messages SET read_at = datetime('now')
+    WHERE sender_id = ? AND recipient_id = ? AND read_at IS NULL
+  `).run(other.id, req.user.id);
+  res.json({ ok: true, marked: info.changes });
+});
+
 if (cliArgs.import) {
   importFolder(cliArgs.import, cliArgs.as);
 }

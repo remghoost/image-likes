@@ -63,6 +63,20 @@ db.exec(`
     expires_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_id INTEGER NOT NULL,
+    recipient_id INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    read_at TEXT,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id, read_at);
+  CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 `);
 
 // Migration: add original_name column (used to make folder imports idempotent)
